@@ -4,7 +4,7 @@ const WorkspaceMembership = require('../models/WorkspaceMembership');
 const bcrypt = require('bcryptjs');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
-const { generateToken } = require('../utils/tokenUtils');
+const { generateToken, sendTokenCookie } = require('../utils/tokenUtils');
 
 const registerUser = asyncHandler(async (req, res, next) => {
   const { name, email, password } = req.body;
@@ -23,7 +23,6 @@ const registerUser = asyncHandler(async (req, res, next) => {
     passwordHash
   });
 
-  // Automatically create a default personal workspace for the new user
   const workspaceSlug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`;
   const workspace = await Workspace.create({
     name: `${name}'s Workspace`,
@@ -42,13 +41,14 @@ const registerUser = asyncHandler(async (req, res, next) => {
   await user.save();
 
   const token = generateToken(user._id);
+  sendTokenCookie(res, token);
 
-  // Cookie ki jagah token direct response mein bhej rahe hain
   res.status(201).json({
     success: true,
     message: 'User registered and default workspace created successfully.',
-    token: token, 
+    token: token,
     data: {
+      token: token,
       user: {
         id: user._id,
         name: user.name,
@@ -75,13 +75,14 @@ const loginUser = asyncHandler(async (req, res, next) => {
   }
 
   const token = generateToken(user._id);
+  sendTokenCookie(res, token);
 
-  // Cookie ki jagah token direct response mein bhej rahe hain
   res.status(200).json({
     success: true,
     message: 'Logged in successfully.',
     token: token,
     data: {
+      token: token,
       user: {
         id: user._id,
         name: user.name,
@@ -95,9 +96,9 @@ const loginUser = asyncHandler(async (req, res, next) => {
 });
 
 const logoutUser = asyncHandler(async (req, res, next) => {
-  // Purani token cookie saaf kar di hai
+  res.clearCookie('nexora_token');
   res.clearCookie('token');
-  
+
   res.status(200).json({
     success: true,
     message: 'Logged out successfully.'
@@ -125,4 +126,47 @@ module.exports = {
   loginUser,
   logoutUser,
   getCurrentUser
-};
+};const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const AppError = require('../utils/AppError');
+const asyncHandler = require('../utils/asyncHandler');
+const env = require('../config/env');
+
+const protect = asyncHandler(async (req, res, next) => {
+  let token;
+
+  // 1. Check Authorization Bearer Header
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (authHeader && authHeader.startsWith('Bearer')) {
+    const extracted = authHeader.split(' ')[1];
+    if (extracted && extracted !== 'undefined' && extracted !== 'null') {
+      token = extracted;
+    }
+  }
+
+  // 2. Check Cookies (nexora_token or token)
+  if (!token && req.cookies) {
+    token = req.cookies.nexora_token || req.cookies.token;
+  }
+
+  if (!token) {
+    return next(new AppError('Not authorized to access this route. Please login.', 401));
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET);
+    const userId = decoded.userId || decoded.id || decoded._id;
+
+    req.user = await User.findById(userId).select('-passwordHash');
+
+    if (!req.user) {
+      return next(new AppError('The user belonging to this token no longer exists.', 401));
+    }
+
+    next();
+  } catch (error) {
+    return next(new AppError('Not authorized, token failed or expired.', 401));
+  }
+});
+
+module.exports = { protect };
