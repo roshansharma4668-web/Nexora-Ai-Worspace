@@ -71,6 +71,18 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
 
+app.use((req, res, next) => {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    if (token && token !== 'undefined' && token !== 'null') {
+      req.cookies = req.cookies || {};
+      req.cookies.token = token;
+    }
+  }
+  next();
+});
+
 // 6. Health-Check Endpoint
 app.get('/api/health', (req, res) => {
   const dbStates = {
@@ -100,5 +112,4 @@ app.use('/api/workspaces/:workspaceId/analytics', analyticsRoutes);
 app.use('/api/workspaces/:workspaceId/ai', aiRoutes);
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
-
 module.exports = app;

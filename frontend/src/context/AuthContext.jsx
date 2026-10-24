@@ -9,9 +9,9 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const checkUserSession = async () => {
-    // Agar Local Storage mein token nahi hai, toh backend ko request bhejne ki zaroorat nahi
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!token || token === 'undefined' || token === 'null') {
+      localStorage.removeItem('token');
       setUser(null);
       setLoading(false);
       return;
@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }) => {
       const response = await api.get('/auth/me');
       setUser(response.data.data.user);
     } catch (err) {
-      // Agar token expire ya invalid ho gaya hai, toh use hata dein
       localStorage.removeItem('token');
       setUser(null);
     } finally {
@@ -37,10 +36,10 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const response = await api.post('/auth/login', credentials);
+      const token = response.data?.token || response.data?.data?.token;
       
-      // Naya Token Local Storage mein save karein
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
+      if (token) {
+        localStorage.setItem('token', token);
       }
       
       setUser(response.data.data.user);
@@ -56,10 +55,10 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const response = await api.post('/auth/register', userData);
+      const token = response.data?.token || response.data?.data?.token;
       
-      // Naya Token Local Storage mein save karein
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
+      if (token) {
+        localStorage.setItem('token', token);
       }
       
       setUser(response.data.data.user);
@@ -77,8 +76,8 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      // Logout par Token humesha Local Storage se delete karein
       localStorage.removeItem('token');
+      localStorage.removeItem('nexora_active_workspace');
       setUser(null);
     }
   };
