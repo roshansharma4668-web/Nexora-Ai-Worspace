@@ -126,47 +126,4 @@ module.exports = {
   loginUser,
   logoutUser,
   getCurrentUser
-};const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const AppError = require('../utils/AppError');
-const asyncHandler = require('../utils/asyncHandler');
-const env = require('../config/env');
-
-const protect = asyncHandler(async (req, res, next) => {
-  let token;
-
-  // 1. Check Authorization Bearer Header
-  const authHeader = req.headers.authorization || req.headers.Authorization;
-  if (authHeader && authHeader.startsWith('Bearer')) {
-    const extracted = authHeader.split(' ')[1];
-    if (extracted && extracted !== 'undefined' && extracted !== 'null') {
-      token = extracted;
-    }
-  }
-
-  // 2. Check Cookies (nexora_token or token)
-  if (!token && req.cookies) {
-    token = req.cookies.nexora_token || req.cookies.token;
-  }
-
-  if (!token) {
-    return next(new AppError('Not authorized to access this route. Please login.', 401));
-  }
-
-  try {
-    const decoded = jwt.verify(token, env.JWT_SECRET);
-    const userId = decoded.userId || decoded.id || decoded._id;
-
-    req.user = await User.findById(userId).select('-passwordHash');
-
-    if (!req.user) {
-      return next(new AppError('The user belonging to this token no longer exists.', 401));
-    }
-
-    next();
-  } catch (error) {
-    return next(new AppError('Not authorized, token failed or expired.', 401));
-  }
-});
-
-module.exports = { protect };
+};
