@@ -4,7 +4,7 @@ const WorkspaceMembership = require('../models/WorkspaceMembership');
 const bcrypt = require('bcryptjs');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
-const { generateToken, sendTokenCookie } = require('../utils/tokenUtils');
+const { generateToken } = require('../utils/tokenUtils');
 
 const registerUser = asyncHandler(async (req, res, next) => {
   const { name, email, password } = req.body;
@@ -42,11 +42,12 @@ const registerUser = asyncHandler(async (req, res, next) => {
   await user.save();
 
   const token = generateToken(user._id);
-  sendTokenCookie(res, token);
 
+  // Cookie ki jagah token direct response mein bhej rahe hain
   res.status(201).json({
     success: true,
     message: 'User registered and default workspace created successfully.',
+    token: token, 
     data: {
       user: {
         id: user._id,
@@ -74,11 +75,12 @@ const loginUser = asyncHandler(async (req, res, next) => {
   }
 
   const token = generateToken(user._id);
-  sendTokenCookie(res, token);
 
+  // Cookie ki jagah token direct response mein bhej rahe hain
   res.status(200).json({
     success: true,
     message: 'Logged in successfully.',
+    token: token,
     data: {
       user: {
         id: user._id,
@@ -93,12 +95,9 @@ const loginUser = asyncHandler(async (req, res, next) => {
 });
 
 const logoutUser = asyncHandler(async (req, res, next) => {
-res.cookie('token', token, {
-  httpOnly: true,
-  secure: true, 
-  sameSite: 'none', 
-  maxAge: 7 * 24 * 60 * 60 * 1000
-});
+  // Purani token cookie saaf kar di hai
+  res.clearCookie('token');
+  
   res.status(200).json({
     success: true,
     message: 'Logged out successfully.'
