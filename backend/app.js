@@ -16,16 +16,19 @@ const aiRoutes = require('./routes/aiRoutes');
 const app = express();
 
 // 1. Security HTTP Headers
-app.use(helmet());
-
-// 2. Strict CORS Configuration for HTTP-Only Cookies & Network IPs
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
+      
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        process.env.CLIENT_URL // Vercel URL from Render environment variables
+      ];
+
       if (
-        origin.startsWith('http://localhost:') ||
-        origin.startsWith('http://127.0.0.1:') ||
+        allowedOrigins.includes(origin) ||
         /^http:\/\/\d+\.\d+\.\d+\.\d+:\d+$/.test(origin)
       ) {
         callback(null, true);
