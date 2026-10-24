@@ -14,8 +14,8 @@ const commentRoutes = require('./routes/commentRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const app = express();
+app.set('trust proxy', 1);
 
-// 1. Security HTTP Headers
 app.use(
   cors({
     origin: function (origin, callback) {
