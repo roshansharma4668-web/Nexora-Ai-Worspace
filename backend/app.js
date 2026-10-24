@@ -100,3 +100,5 @@ app.use('/api/workspaces/:workspaceId/analytics', analyticsRoutes);
 app.use('/api/workspaces/:workspaceId/ai', aiRoutes);
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
+
+module.exports = app;
